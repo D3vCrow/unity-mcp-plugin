@@ -170,11 +170,28 @@ namespace UnityMCP.Editor
         // X-MCP-Token. The companion reads the secret from
         // %APPDATA%/unity-mcp/secret (Windows) / $XDG_CONFIG_HOME/unity-mcp/secret (Unix).
 
+        // Thread-safe snapshot of security settings. The bridge's HTTP handler runs on a
+        // ThreadPool thread and cannot touch EditorPrefs (main-thread-only), so we mirror
+        // the values into volatile fields. RefreshSecuritySnapshot() repopulates them and
+        // MUST run on the main thread (called from Start() and each security setter).
+        private static volatile bool _enforceTokenSnapshot;
+        private static volatile string _sharedSecretSnapshot = "";
+
         public static bool EnforceToken
         {
             get => EditorPrefs.GetBool(Prefix + "EnforceToken", false);
-            set => EditorPrefs.SetBool(Prefix + "EnforceToken", value);
+            set
+            {
+                EditorPrefs.SetBool(Prefix + "EnforceToken", value);
+                RefreshSecuritySnapshot();
+            }
         }
+
+        /// <summary>
+        /// Worker-thread-safe view of EnforceToken. Backed by the snapshot refreshed on
+        /// the main thread — the HTTP handler calls this instead of the EditorPrefs getter.
+        /// </summary>
+        public static bool EnforceTokenThreadsafe => _enforceTokenSnapshot;
 
         /// <summary>
         /// Shared secret for X-MCP-Token. Lazily generated on first access; persisted to
@@ -197,7 +214,22 @@ namespace UnityMCP.Editor
             {
                 EditorPrefs.SetString(Prefix + "SharedSecret", value);
                 TryWriteSecretSidecar(value);
+                RefreshSecuritySnapshot();
             }
+        }
+
+        /// <summary>Worker-thread-safe view of SharedSecret. Empty until RefreshSecuritySnapshot() runs.</summary>
+        public static string SharedSecretThreadsafe => _sharedSecretSnapshot;
+
+        /// <summary>
+        /// Re-read EnforceToken and SharedSecret from EditorPrefs into the volatile
+        /// snapshot. Reading SharedSecret triggers lazy generation if no secret exists.
+        /// MUST be called from the Unity main thread (EditorPrefs is not thread-safe).
+        /// </summary>
+        public static void RefreshSecuritySnapshot()
+        {
+            _enforceTokenSnapshot = EditorPrefs.GetBool(Prefix + "EnforceToken", false);
+            _sharedSecretSnapshot = SharedSecret; // triggers lazy generation if absent
         }
 
         public static string SecretSidecarPath

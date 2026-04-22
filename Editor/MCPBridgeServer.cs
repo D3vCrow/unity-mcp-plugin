@@ -136,6 +136,10 @@ namespace UnityMCP.Editor
             // Batch-mode subprocesses (AssetImportWorker, etc.) must never start the server.
             if (Application.isBatchMode) return;
 
+            // Snapshot security settings into thread-safe fields before the listener thread
+            // starts. The handler runs on a ThreadPool thread and must not touch EditorPrefs.
+            MCPSettingsManager.RefreshSecuritySnapshot();
+
             // Ensure console log capture is active before anything else
             MCPConsoleCommands.EnsureListening();
 
@@ -331,11 +335,11 @@ namespace UnityMCP.Editor
                     SendJson(response, 403, new { error = "origin not allowed" });
                     return;
                 }
-                if (MCPSettingsManager.EnforceToken &&
+                if (MCPSettingsManager.EnforceTokenThreadsafe &&
                     !string.Equals(request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase))
                 {
                     string presented = request.Headers["X-MCP-Token"] ?? "";
-                    string expected = MCPSettingsManager.SharedSecret;
+                    string expected = MCPSettingsManager.SharedSecretThreadsafe;
                     if (string.IsNullOrEmpty(expected) ||
                         !ConstantTimeEquals(presented, expected))
                     {
