@@ -31,7 +31,8 @@ namespace UnityMCP.Editor
         private GUIStyle _dotStyle;
         private bool _stylesInitialized;
 
-        [MenuItem("Window/AB Unity MCP")]
+        [MenuItem("Window/AB Unity MCP/Open Dashboard", priority = 0)]
+        [MenuItem("Window/AB Unity MCP", priority = 0)]
         public static void ShowWindow()
         {
             var window = GetWindow<MCPDashboardWindow>("AB Unity MCP");
