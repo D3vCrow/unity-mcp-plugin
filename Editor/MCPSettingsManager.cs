@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
 using UnityEditor;
 using UnityEngine;
 
@@ -158,6 +161,80 @@ namespace UnityMCP.Editor
             set => EditorPrefs.SetBool(ProjectPrefix + "StartOnVirtualPlayers", value);
         }
 
+        // ─── Security: Origin check + shared-secret token ───
+        //
+        // Origin allowlist is always enforced (cheap defense against browser drive-by).
+        // Shared-secret token on mutating verbs is opt-in via EnforceToken so upstream
+        // users don't regress when they pick up this release; operators who want the full
+        // hardened mode flip EnforceToken=true and configure their companion to send
+        // X-MCP-Token. The companion reads the secret from
+        // %APPDATA%/unity-mcp/secret (Windows) / $XDG_CONFIG_HOME/unity-mcp/secret (Unix).
+
+        public static bool EnforceToken
+        {
+            get => EditorPrefs.GetBool(Prefix + "EnforceToken", false);
+            set => EditorPrefs.SetBool(Prefix + "EnforceToken", value);
+        }
+
+        /// <summary>
+        /// Shared secret for X-MCP-Token. Lazily generated on first access; persisted to
+        /// EditorPrefs AND to a sidecar file on disk so companion processes can read it.
+        /// </summary>
+        public static string SharedSecret
+        {
+            get
+            {
+                string v = EditorPrefs.GetString(Prefix + "SharedSecret", "");
+                if (string.IsNullOrEmpty(v))
+                {
+                    v = GenerateSecret();
+                    EditorPrefs.SetString(Prefix + "SharedSecret", v);
+                    TryWriteSecretSidecar(v);
+                }
+                return v;
+            }
+            set
+            {
+                EditorPrefs.SetString(Prefix + "SharedSecret", value);
+                TryWriteSecretSidecar(value);
+            }
+        }
+
+        public static string SecretSidecarPath
+        {
+            get
+            {
+                string baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                return Path.Combine(baseDir, "unity-mcp", "secret");
+            }
+        }
+
+        private static string GenerateSecret()
+        {
+            byte[] buf = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(buf);
+            }
+            return Convert.ToBase64String(buf);
+        }
+
+        private static void TryWriteSecretSidecar(string secret)
+        {
+            try
+            {
+                string path = SecretSidecarPath;
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllText(path, secret);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"[AB-UMCP] Failed to write shared-secret sidecar at {SecretSidecarPath}: {ex.Message}. " +
+                    "Companion processes will not be able to auto-discover the token.");
+            }
+        }
+
         // ─── Project Context (project-scoped) ───
 
         public static bool ContextEnabled
@@ -250,6 +327,7 @@ namespace UnityMCP.Editor
             Port = 7890;
             AutoStart = true;
             StartOnVirtualPlayers = true;
+            EnforceToken = false;
             ContextEnabled = true;
             ContextPath = "Assets/MCP/Context";
             ActionHistoryPersistence = false;

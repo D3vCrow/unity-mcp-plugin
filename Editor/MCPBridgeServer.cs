@@ -317,6 +317,33 @@ namespace UnityMCP.Editor
                     return;
                 }
 
+                // ─── Security gate ───────────────────────────────────────────────
+                // Blocks the "malicious browser tab on the same machine" attack vector:
+                // without an Origin allowlist, any page loaded in the user's browser
+                // could drive the editor (execute-code, script/update, packages/add …).
+                //
+                // Origin check:  always enforced. Missing Origin passes (raw tool traffic
+                //                has no Origin; browsers always emit one).
+                // Token check:   opt-in via MCPSettingsManager.EnforceToken. Applies to
+                //                non-GET verbs only (reads remain ergonomic for curl).
+                if (!IsOriginAllowed(request.Headers["Origin"]))
+                {
+                    SendJson(response, 403, new { error = "origin not allowed" });
+                    return;
+                }
+                if (MCPSettingsManager.EnforceToken &&
+                    !string.Equals(request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase))
+                {
+                    string presented = request.Headers["X-MCP-Token"] ?? "";
+                    string expected = MCPSettingsManager.SharedSecret;
+                    if (string.IsNullOrEmpty(expected) ||
+                        !ConstantTimeEquals(presented, expected))
+                    {
+                        SendJson(response, 403, new { error = "token invalid" });
+                        return;
+                    }
+                }
+
                 string apiPath = path.Substring(4); // Remove "api/"
                 string body = "";
                 if (request.HasEntityBody)
@@ -1482,6 +1509,23 @@ namespace UnityMCP.Editor
         {
             string dataPath = Application.dataPath;
             return dataPath.Substring(0, dataPath.Length - "/Assets".Length);
+        }
+
+        // ─── Security helpers ────────────────────────────────────────────────
+        private static bool IsOriginAllowed(string origin)
+        {
+            if (string.IsNullOrEmpty(origin)) return true; // raw tool / curl — rely on token when EnforceToken=true
+            int port = _activePort;
+            return origin == $"http://127.0.0.1:{port}" || origin == $"http://localhost:{port}";
+        }
+
+        private static bool ConstantTimeEquals(string a, string b)
+        {
+            if (a == null || b == null) return false;
+            if (a.Length != b.Length) return false;
+            int diff = 0;
+            for (int i = 0; i < a.Length; i++) diff |= a[i] ^ b[i];
+            return diff == 0;
         }
     }
 }
