@@ -696,9 +696,48 @@ namespace UnityMCP.Editor
 
             EditorGUILayout.Space(6);
 
+            // ─── Security ───
+            EditorGUILayout.LabelField("Security", EditorStyles.boldLabel);
+
+            // Security — token enforcement on mutating verbs
+            bool enforceToken = EditorGUILayout.Toggle(new GUIContent("Enforce X-MCP-Token",
+                "When enabled, non-GET requests must present a matching X-MCP-Token header. " +
+                "Origin allowlist is always enforced regardless of this setting."),
+                MCPSettingsManager.EnforceToken);
+            if (enforceToken != MCPSettingsManager.EnforceToken)
+                MCPSettingsManager.EnforceToken = enforceToken;
+
+            if (enforceToken)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Shared secret at {MCPSettingsManager.SecretSidecarPath}. " +
+                    "Companion processes must read it from there and send X-MCP-Token on mutating calls.",
+                    MessageType.Info);
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Copy Secret", GUILayout.Width(120)))
+                {
+                    EditorGUIUtility.systemCopyBuffer = MCPSettingsManager.SharedSecret;
+                }
+                if (GUILayout.Button("Regenerate Secret", GUILayout.Width(160)))
+                {
+                    if (EditorUtility.DisplayDialog("Regenerate Shared Secret",
+                        "This invalidates the current token. Companion processes must re-read the secret. Continue?",
+                        "Regenerate", "Cancel"))
+                    {
+                        MCPSettingsManager.SharedSecret = "";
+                        // Force lazy re-bootstrap so sidecar is rewritten immediately.
+                        string _ = MCPSettingsManager.SharedSecret;
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.Space(6);
+
             // ─── Port ───
             EditorGUILayout.LabelField("Port", EditorStyles.boldLabel);
 
+            // Port mode toggle
             bool useManual = EditorGUILayout.Toggle("Use Manual Port", MCPSettingsManager.UseManualPort);
             if (useManual != MCPSettingsManager.UseManualPort)
                 MCPSettingsManager.UseManualPort = useManual;
