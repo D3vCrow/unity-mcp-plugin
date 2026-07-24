@@ -169,6 +169,14 @@ namespace UnityMCP.Editor
         // hardened mode flip EnforceToken=true and configure their companion to send
         // X-MCP-Token. The companion reads the secret from
         // %APPDATA%/unity-mcp/secret (Windows) / $XDG_CONFIG_HOME/unity-mcp/secret (Unix).
+        //
+        // Security keys are MACHINE-GLOBAL — deliberately NOT instance/project-scoped like
+        // the two-tier settings above. The secret sidecar (SecretSidecarPath) is a single
+        // machine-wide file with no project/instance component, so the stored secret and
+        // enforcement flag must be machine-wide too; scoping them per-instance/project would
+        // desync EditorPrefs from the one sidecar every companion reads. Value matches the
+        // legacy prefix, so keys stored before the two-tier refactor survive untouched.
+        private const string SecurityPrefix = "UnityMCP_";
 
         // Thread-safe snapshot of security settings. The bridge's HTTP handler runs on a
         // ThreadPool thread and cannot touch EditorPrefs (main-thread-only), so we mirror
@@ -179,10 +187,10 @@ namespace UnityMCP.Editor
 
         public static bool EnforceToken
         {
-            get => EditorPrefs.GetBool(Prefix + "EnforceToken", false);
+            get => EditorPrefs.GetBool(SecurityPrefix + "EnforceToken", false);
             set
             {
-                EditorPrefs.SetBool(Prefix + "EnforceToken", value);
+                EditorPrefs.SetBool(SecurityPrefix + "EnforceToken", value);
                 RefreshSecuritySnapshot();
             }
         }
@@ -201,18 +209,18 @@ namespace UnityMCP.Editor
         {
             get
             {
-                string v = EditorPrefs.GetString(Prefix + "SharedSecret", "");
+                string v = EditorPrefs.GetString(SecurityPrefix + "SharedSecret", "");
                 if (string.IsNullOrEmpty(v))
                 {
                     v = GenerateSecret();
-                    EditorPrefs.SetString(Prefix + "SharedSecret", v);
+                    EditorPrefs.SetString(SecurityPrefix + "SharedSecret", v);
                     TryWriteSecretSidecar(v);
                 }
                 return v;
             }
             set
             {
-                EditorPrefs.SetString(Prefix + "SharedSecret", value);
+                EditorPrefs.SetString(SecurityPrefix + "SharedSecret", value);
                 TryWriteSecretSidecar(value);
                 RefreshSecuritySnapshot();
             }
@@ -228,7 +236,7 @@ namespace UnityMCP.Editor
         /// </summary>
         public static void RefreshSecuritySnapshot()
         {
-            _enforceTokenSnapshot = EditorPrefs.GetBool(Prefix + "EnforceToken", false);
+            _enforceTokenSnapshot = EditorPrefs.GetBool(SecurityPrefix + "EnforceToken", false);
             _sharedSecretSnapshot = SharedSecret; // triggers lazy generation if absent
         }
 
