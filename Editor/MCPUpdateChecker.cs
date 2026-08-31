@@ -14,20 +14,12 @@ namespace UnityMCP.Editor
         private const string GitHubApiUrl =
             "https://api.github.com/repos/AnkleBreaker-Studio/unity-mcp-plugin/releases/latest";
 
-        private static string _currentVersion;
-        public static string CurrentVersion
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_currentVersion))
-                {
-                    var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
-                        typeof(MCPUpdateChecker).Assembly);
-                    _currentVersion = packageInfo?.version ?? "0.0.0";
-                }
-                return _currentVersion;
-            }
-        }
+        /// <summary>
+        /// Installed package version. Delegates to <see cref="MCPCapabilities.PluginVersion"/>
+        /// so the package.json read has exactly one call site — two copies of the same lookup
+        /// is how the advertised version drifted in the first place.
+        /// </summary>
+        public static string CurrentVersion => MCPCapabilities.PluginVersion;
         private const string CacheKey = "UnityMCP_LatestVersion";
         private const string CacheTimeKey = "UnityMCP_LatestVersionTime";
         private const double CacheHours = 1.0;

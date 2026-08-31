@@ -12,7 +12,8 @@ namespace UnityMCP.Editor
     ///
     /// Pattern ported (not copied) from Unity ML-Agents' UnityRLCapabilities.
     /// Keep <see cref="ProtocolVersion"/> in sync with the server's PROTOCOL_VERSION
-    /// (src/capabilities.js) and <see cref="PluginVersion"/> in sync with package.json.
+    /// (src/capabilities.js). <see cref="PluginVersion"/> needs no syncing — it reads
+    /// package.json at runtime.
     /// Ref: knowledge/research/2026-07-12-vet-unity-ml-agents.md
     /// </summary>
     public static class MCPCapabilities
@@ -24,7 +25,38 @@ namespace UnityMCP.Editor
         /// </summary>
         public const int ProtocolVersion = 1;
 
-        /// <summary>Plugin package version. Keep synced with package.json.</summary>
-        public const string PluginVersion = "2.27.0";
+        private static string _pluginVersion;
+
+        /// <summary>
+        /// Plugin package version, read from package.json at runtime.
+        ///
+        /// This used to be a hand-maintained literal and it drifted: the constant sat at
+        /// 2.27.0 while package.json had reached 2.32.0, so every /api/ping advertised a
+        /// five-release-old version. The server hit the identical bug and fixed it the same
+        /// way — read the manifest instead of restating it (src/index.js, createRequire).
+        /// A literal that has to be edited in lockstep with another file is drift waiting to
+        /// happen, so there is no longer a literal to edit.
+        ///
+        /// Cached after first use: PackageInfo does a resolve and ping is a hot route. The
+        /// lazy read is main-thread-safe because RouteRequest is dispatched to the main
+        /// thread (see MCPBridgeServer.RouteRequest).
+        ///
+        /// Falls back to "0.0.0" when the assembly belongs to no package — i.e. the plugin
+        /// was dropped into Assets/ instead of installed via Package Manager, which the
+        /// README does not document. An honest "unknown" beats a fabricated version.
+        /// </summary>
+        public static string PluginVersion
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_pluginVersion))
+                {
+                    var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                        typeof(MCPCapabilities).Assembly);
+                    _pluginVersion = packageInfo?.version ?? "0.0.0";
+                }
+                return _pluginVersion;
+            }
+        }
     }
 }
