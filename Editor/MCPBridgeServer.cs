@@ -73,7 +73,7 @@ namespace UnityMCP.Editor
         {
             // Skip batch-mode Unity subprocesses (AssetImportWorker, CLI builds, etc.).
             // These are short-lived, don't need MCP access, and would otherwise claim
-            // ports in the 7890-7899 range and exhaust availability for real editors.
+            // ports in the 7700-7709 range and exhaust availability for real editors.
             if (Application.isBatchMode) return;
 
             // Restart if: auto-start is allowed (respects the Virtual Player setting)

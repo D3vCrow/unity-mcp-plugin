@@ -8,7 +8,7 @@
 
 ## What It Does
 
-This package runs a lightweight HTTP bridge inside the Unity Editor on `localhost:7890`. The companion [Unity MCP Server](https://github.com/AnkleBreaker-Studio/unity-mcp-server) connects to it, exposing **288 tools** to AI assistants across **30+ feature categories** — scenes, GameObjects, components, builds, profiling, Shader Graph, Amplify Shader Editor, terrain, physics, NavMesh, animation, multiplayer, and much more.
+This package runs a lightweight HTTP bridge inside the Unity Editor on `localhost:7700`. The companion [Unity MCP Server](https://github.com/AnkleBreaker-Studio/unity-mcp-server) connects to it, exposing **288 tools** to AI assistants across **30+ feature categories** — scenes, GameObjects, components, builds, profiling, Shader Graph, Amplify Shader Editor, terrain, physics, NavMesh, animation, multiplayer, and much more.
 
 ### Neon Brick Breaker — Built from scratch by AI in under 5 minutes
 > Claude creates the entire game: scene setup, neon materials with bloom post-processing, brick grid layout, game scripts, VFX, and UI — all through Unity MCP commands.
@@ -110,12 +110,12 @@ This package runs a lightweight HTTP bridge inside the Unity Editor on `localhos
 
 Unity will download and install the package. You should see in the Console:
 ```
-[MCP Bridge] Server started on port 7890
+[MCP Bridge] Server started on port 7700
 ```
 
 ### Verify
 
-Open a browser and visit: `http://127.0.0.1:7890/api/ping`
+Open a browser and visit: `http://127.0.0.1:7700/api/ping`
 
 You should see JSON with your Unity version and project name.
 
@@ -158,7 +158,7 @@ Some features activate automatically when their corresponding packages are detec
 
 Configuration is managed through the MCP Dashboard (`Window > MCP Dashboard > Settings`):
 
-- **Port** — HTTP server port (default: `7890`)
+- **Port** — HTTP server port (default: `7700`, auto-selected from `7700-7709`)
 - **Auto-Start** — Automatically start the bridge when Unity opens (default: `true`)
 - **Category Toggles** — Enable/disable any of the 30+ feature categories
 

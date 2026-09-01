@@ -18,7 +18,7 @@ namespace UnityMCP.Editor
     /// ~/.local/share/UnityMCP/instances.json (macOS/Linux).
     ///
     /// On startup, the plugin auto-selects the first available port in the range
-    /// 7890-7899. The MCP server reads this registry to discover all running instances.
+    /// 7700-7709. The MCP server reads this registry to discover all running instances.
     ///
     /// Supports:
     ///   - Multiple different projects open simultaneously
@@ -27,9 +27,15 @@ namespace UnityMCP.Editor
     /// </summary>
     public static class MCPInstanceRegistry
     {
-        // Port range for auto-selection
-        public const int PortRangeStart = 7890;
-        public const int PortRangeEnd = 7899;
+        // Port range for auto-selection.
+        //
+        // Kept clear of 7800-7999, which Unity's com.unity.pipeline package claims
+        // wholesale (editor 7800-7849, editor tests 7850-7899, runtime 7900-7949,
+        // runtime tests 7950-7999). The old 7890-7899 range sat entirely inside
+        // Unity's editor-test band, so a project running both would race for ports.
+        // See knowledge/research/2026-07-22-vet-unity-cli.md (2026-08-28 delta).
+        public const int PortRangeStart = 7700;
+        public const int PortRangeEnd = 7709;
 
         private static readonly string RegistryDir;
         private static readonly string RegistryPath;

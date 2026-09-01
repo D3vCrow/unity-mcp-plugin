@@ -124,13 +124,13 @@ namespace UnityMCP.Editor
 
         public static int Port
         {
-            get => EditorPrefs.GetInt(InstancePrefix + "Port", 7890);
+            get => EditorPrefs.GetInt(InstancePrefix + "Port", 7700);
             set => EditorPrefs.SetInt(InstancePrefix + "Port", value);
         }
 
         /// <summary>
         /// When true, uses the manually configured Port value instead of auto-selecting.
-        /// Default is false (auto-select from port range 7890-7899). Instance-scoped:
+        /// Default is false (auto-select from port range 7700-7709). Instance-scoped:
         /// each clone / virtual player picks its own port.
         /// </summary>
         public static bool UseManualPort
@@ -364,7 +364,7 @@ namespace UnityMCP.Editor
         /// </summary>
         public static void ResetToDefaults()
         {
-            Port = 7890;
+            Port = 7700;
             AutoStart = true;
             StartOnVirtualPlayers = true;
             EnforceToken = false;

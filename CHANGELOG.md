@@ -2,6 +2,11 @@
 
 All notable changes to this package will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **Auto-select port range moved from `7890-7899` to `7700-7709`** — Unity's `com.unity.pipeline` package (shipped alongside the Unity CLI, `0.5.0-exp.1` as of 2026-08-28) claims `7800-7999` wholesale: editor `7800-7849`, editor tests `7850-7899`, runtime `7900-7949`, runtime tests `7950-7999`. The old bridge range sat entirely inside Unity's editor-test band, so any project running both the pipeline package and this bridge would race for the same ports. `MCPInstanceRegistry.PortRangeStart/End`, the `MCPSettingsManager.Port` EditorPrefs default, and `ResetToDefaults()` all move together. `PortRangeStart`/`PortRangeEnd` are `const`, so a **full domain reload is required** — Hot Reload will not pick this up. Companion change in `unity-mcp-server` (`config.js` defaults + scan range). Rationale: `knowledge/research/2026-07-22-vet-unity-cli.md` (2026-08-28 delta).
+
 ## [2.32.0] - 2026-06-02
 
 ### Added
