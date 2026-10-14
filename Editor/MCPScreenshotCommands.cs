@@ -21,17 +21,22 @@ namespace UnityMCP.Editor
         public static object CaptureGameView(Dictionary<string, object> args)
         {
             string path = args.ContainsKey("path") ? args["path"].ToString() : "";
+            // Default names are ours; only a caller-chosen path needs the overwrite opt-in.
+            bool overwrite = string.IsNullOrEmpty(path) || (args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]));
             if (string.IsNullOrEmpty(path))
                 path = "Assets/Screenshots/GameView_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
+
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new { error = pathError };
 
             int superSize = args.ContainsKey("superSize") ? Convert.ToInt32(args["superSize"]) : 1;
 
             // Ensure directory exists
-            string dir = Path.GetDirectoryName(path)?.Replace('\\', '/');
+            string dir = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            ScreenCapture.CaptureScreenshot(path, superSize);
+            ScreenCapture.CaptureScreenshot(fullPath, superSize);
 
             return new Dictionary<string, object>
             {
@@ -47,8 +52,12 @@ namespace UnityMCP.Editor
         public static object CaptureSceneView(Dictionary<string, object> args)
         {
             string path = args.ContainsKey("path") ? args["path"].ToString() : "";
+            bool overwrite = string.IsNullOrEmpty(path) || (args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]));
             if (string.IsNullOrEmpty(path))
                 path = "Assets/Screenshots/SceneView_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
+
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new { error = pathError };
 
             int width = args.ContainsKey("width") ? Convert.ToInt32(args["width"]) : 1920;
             int height = args.ContainsKey("height") ? Convert.ToInt32(args["height"]) : 1080;
@@ -58,7 +67,7 @@ namespace UnityMCP.Editor
                 return new { error = "No active Scene View found" };
 
             // Ensure directory exists
-            string dir = Path.GetDirectoryName(path)?.Replace('\\', '/');
+            string dir = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
@@ -76,7 +85,7 @@ namespace UnityMCP.Editor
             RenderTexture.active = null;
 
             byte[] bytes = tex.EncodeToPNG();
-            File.WriteAllBytes(path, bytes);
+            File.WriteAllBytes(fullPath, bytes);
 
             UnityEngine.Object.DestroyImmediate(tex);
             UnityEngine.Object.DestroyImmediate(rt);
@@ -214,10 +223,13 @@ namespace UnityMCP.Editor
                 return Err("'window' is required (EditorWindow type FullName e.g. 'UnityEditor.InspectorWindow', simple type name, or tab title).");
 
             string path = args != null && args.ContainsKey("path") ? args["path"].ToString() : "";
+            bool overwrite = string.IsNullOrEmpty(path) || (args != null && args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]));
             if (string.IsNullOrEmpty(path))
                 path = "Assets/Screenshots/EditorWindow_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
             if (!path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                 return Err("path must end in .png");
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return Err(pathError);
             int maxDimension = args != null && args.ContainsKey("maxDimension") ? Convert.ToInt32(args["maxDimension"]) : 8192;
 
             var win = FindWindow(window, out int matchCount);
@@ -258,7 +270,7 @@ namespace UnityMCP.Editor
                     if (pw <= 0 || ph <= 0) return Err("Bad panel rect " + pw + "x" + ph);
                 }
 
-                return GrabAndEncode(hwnd, whole, px, py, pw, ph, path, maxDimension, win, floating);
+                return GrabAndEncode(hwnd, whole, px, py, pw, ph, fullPath, maxDimension, win, floating);
             }
             finally
             {

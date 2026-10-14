@@ -1492,7 +1492,7 @@ namespace UnityMCP.Editor
 
             string path = args.ContainsKey("path") ? args["path"].ToString() : "";
             if (string.IsNullOrEmpty(path))
-                return new { error = "path is required (asset path to a Texture2D or absolute path to .raw file)" };
+                return new { error = "path is required (asset path to a Texture2D or path to a .raw file inside the project folder)" };
 
             var data = terrain.terrainData;
             int res = data.heightmapResolution;
@@ -1501,9 +1501,8 @@ namespace UnityMCP.Editor
             if (path.ToLower().EndsWith(".raw"))
             {
                 // Import RAW
-                string fullPath = path;
-                if (!System.IO.Path.IsPathRooted(fullPath))
-                    fullPath = System.IO.Path.Combine(Application.dataPath, "..", fullPath);
+                if (!MCPPathGuard.TryResolveRead(path, out string fullPath, out string pathError))
+                    return new { error = pathError };
 
                 if (!System.IO.File.Exists(fullPath))
                     return new { error = $"File not found: {fullPath}" };
@@ -1574,15 +1573,15 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(path))
                 return new { error = "path is required" };
 
+            bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new { error = pathError };
+
             bool is16Bit = !args.ContainsKey("depth") || args["depth"].ToString() == "16";
 
             var data = terrain.terrainData;
             int res = data.heightmapResolution;
             float[,] heights = data.GetHeights(0, 0, res, res);
-
-            string fullPath = path;
-            if (!System.IO.Path.IsPathRooted(fullPath))
-                fullPath = System.IO.Path.Combine(Application.dataPath, "..", fullPath);
 
             string dir = System.IO.Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
