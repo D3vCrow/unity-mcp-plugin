@@ -327,9 +327,14 @@ namespace UnityMCP.Editor
                 // could drive the editor (execute-code, script/update, packages/add …).
                 //
                 // Origin check:  always enforced. Missing Origin passes (raw tool traffic
-                //                has no Origin; browsers always emit one).
+                //                has no Origin). Browsers omit Origin on a no-cors GET
+                //                (an <img src>), so the GET gate below covers that case.
                 // Token check:   opt-in via MCPSettingsManager.EnforceToken. Applies to
                 //                non-GET verbs only (reads remain ergonomic for curl).
+                // GET gate:      GET reaches only the read routes in IsGetReadRoute.
+                //                RouteRequest dispatches on the path alone, so without
+                //                this an empty-body GET could enter Play mode, save or
+                //                replace the open scene with no token.
                 if (!IsOriginAllowed(request.Headers["Origin"]))
                 {
                     SendJson(response, 403, new { error = "origin not allowed" });
@@ -349,6 +354,12 @@ namespace UnityMCP.Editor
                 }
 
                 string apiPath = path.Substring(4); // Remove "api/"
+                if (string.Equals(request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase) &&
+                    !IsGetReadRoute(apiPath))
+                {
+                    SendJson(response, 405, new { error = "GET not allowed on this route, use POST" });
+                    return;
+                }
                 string body = "";
                 if (request.HasEntityBody)
                 {
@@ -1538,6 +1549,24 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(origin)) return true; // raw tool / curl — rely on token when EnforceToken=true
             int port = _activePort;
             return origin == $"http://127.0.0.1:{port}" || origin == $"http://localhost:{port}";
+        }
+
+        // Routes a GET may reach: the ones the MCP server reads with GET (ping, queue
+        // status/info, context) plus the read-only meta and agent views. Every other
+        // route takes POST, so the token gate covers it.
+        private static bool IsGetReadRoute(string apiPath)
+        {
+            switch (apiPath)
+            {
+                case "ping":
+                case "_meta/routes":
+                case "queue/status":
+                case "queue/info":
+                case "context":
+                case "agents/list":
+                    return true;
+            }
+            return apiPath.StartsWith("context/");
         }
 
         private static bool ConstantTimeEquals(string a, string b)

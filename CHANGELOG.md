@@ -4,6 +4,9 @@ All notable changes to this package will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **GET now reaches only read routes** — the token gate exempts GET, and `RouteRequest` dispatches on the path alone, so an empty-body GET with no token reached mutating handlers: `editor/play-mode` (defaults to `play`), `scene/save`, `scene/new` (replaces the open scene, unsaved work lost). A browser sends no `Origin` on a no-cors GET (an `<img src>`), so the Origin check did not stop it. Confirmed live 2026-10-14: a bare `GET /api/editor/execute-menu-item` answered 200 with the handler's own error. `IsGetReadRoute` now allows GET only for `ping`, `_meta/routes`, `queue/status`, `queue/info`, `context`, `context/*` and `agents/list` (the routes `unity-mcp-server` reads with GET, plus read-only views); every other GET answers 405. POST is unchanged. Source: `knowledge/research/2026-10-14-vet-docs-mcp-server.md` consumer gate, `docs/handoffs/2026-10-14-context7-followups-audit-trail.md`.
+
 ### Changed
 - **Auto-select port range moved from `7890-7899` to `7700-7709`** — Unity's `com.unity.pipeline` package (shipped alongside the Unity CLI, `0.5.0-exp.1` as of 2026-08-28) claims `7800-7999` wholesale: editor `7800-7849`, editor tests `7850-7899`, runtime `7900-7949`, runtime tests `7950-7999`. The old bridge range sat entirely inside Unity's editor-test band, so any project running both the pipeline package and this bridge would race for the same ports. `MCPInstanceRegistry.PortRangeStart/End`, the `MCPSettingsManager.Port` EditorPrefs default, and `ResetToDefaults()` all move together. `PortRangeStart`/`PortRangeEnd` are `const`, so a **full domain reload is required** — Hot Reload will not pick this up. Companion change in `unity-mcp-server` (`config.js` defaults + scan range). Rationale: `knowledge/research/2026-07-22-vet-unity-cli.md` (2026-08-28 delta).
 
