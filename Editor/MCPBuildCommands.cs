@@ -18,6 +18,10 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(outputPath))
                 return new { error = "outputPath is required" };
 
+            // A rebuild replaces its own files, so only the folder is checked.
+            if (!MCPPathGuard.TryResolveWrite(outputPath, true, out string fullOutputPath, out string pathError))
+                return new { error = pathError };
+
             if (!Enum.TryParse<BuildTarget>(targetStr, out var target))
                 return new { error = $"Unknown build target: {targetStr}" };
 
@@ -42,7 +46,7 @@ namespace UnityMCP.Editor
             var options = new BuildPlayerOptions
             {
                 scenes = scenes,
-                locationPathName = outputPath,
+                locationPathName = fullOutputPath,
                 target = target,
                 options = devBuild ? BuildOptions.Development : BuildOptions.None,
             };
