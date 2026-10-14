@@ -210,6 +210,9 @@ namespace UnityMCP.Editor
                 return new Dictionary<string, object> { { "error", "Missing required parameter: path" } };
 
             string path = args["path"].ToString();
+            if (!MCPPathGuard.TryResolveRead(path, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
+
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(path);
 
             if (shader == null)
@@ -242,7 +245,6 @@ namespace UnityMCP.Editor
             var amplifyMeta = new Dictionary<string, object>();
             try
             {
-                string fullPath = Path.Combine(Application.dataPath, "..", path);
                 if (File.Exists(fullPath))
                 {
                     string content = File.ReadAllText(fullPath);
@@ -883,6 +885,10 @@ namespace UnityMCP.Editor
             string path = args["path"].ToString();
             string shaderName = args.ContainsKey("shaderName") ? args["shaderName"].ToString() : Path.GetFileNameWithoutExtension(path);
 
+            bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
+
             try
             {
                 // Try to use Amplify's create method via reflection
@@ -925,7 +931,6 @@ namespace UnityMCP.Editor
                         }
 
                         string shaderContent = GenerateMinimalAmplifyShader(shaderName);
-                        string fullPath = Path.Combine(Application.dataPath, "..", path);
                         File.WriteAllText(fullPath, shaderContent);
                         AssetDatabase.ImportAsset(path);
                         created = true;
@@ -1509,6 +1514,11 @@ namespace UnityMCP.Editor
                             savePath = $"Assets/Shaders/NewAmplifyShader_{DateTime.Now:yyyyMMdd_HHmmss}.shader";
                     }
 
+                    // A name taken from the shader can match another shader's file, so it needs the opt-in too.
+                    bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+                    if (!MCPPathGuard.TryResolveWrite(savePath, overwrite, out string fullPath, out string pathError))
+                        return new Dictionary<string, object> { { "error", pathError } };
+
                     // Ensure directory exists
                     string dir = Path.GetDirectoryName(savePath)?.Replace('\\', '/');
                     if (!string.IsNullOrEmpty(dir) && !AssetDatabase.IsValidFolder(dir))
@@ -1525,7 +1535,6 @@ namespace UnityMCP.Editor
                     }
 
                     // Write minimal file so SaveToDisk can overwrite it
-                    string fullPath = Path.Combine(Application.dataPath, "..", savePath);
                     if (!File.Exists(fullPath))
                     {
                         File.WriteAllText(fullPath, "// Amplify Shader placeholder");
@@ -1619,6 +1628,10 @@ namespace UnityMCP.Editor
             string shaderName = args.ContainsKey("shaderName") ? args["shaderName"].ToString() : Path.GetFileNameWithoutExtension(path);
             string template = args.ContainsKey("template") ? args["template"].ToString().ToLower() : "surface";
 
+            bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
+
             try
             {
                 // Ensure directory exists
@@ -1665,7 +1678,6 @@ namespace UnityMCP.Editor
                         break;
                 }
 
-                string fullPath = Path.Combine(Application.dataPath, "..", path);
                 File.WriteAllText(fullPath, shaderContent);
                 AssetDatabase.ImportAsset(path);
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -17,7 +18,9 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(content))
                 return new { error = "content is required" };
 
-            string fullPath = Path.Combine(Application.dataPath.Replace("/Assets", ""), path);
+            bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new { error = pathError };
             string dir = Path.GetDirectoryName(fullPath);
 
             if (!Directory.Exists(dir))
@@ -35,7 +38,8 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(path))
                 return new { error = "path is required" };
 
-            string fullPath = Path.Combine(Application.dataPath.Replace("/Assets", ""), path);
+            if (!MCPPathGuard.TryResolveRead(path, out string fullPath, out string pathError))
+                return new { error = pathError };
 
             if (!File.Exists(fullPath))
                 return new { error = $"File not found: {path}" };
@@ -58,7 +62,8 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(path))
                 return new { error = "path is required" };
 
-            string fullPath = Path.Combine(Application.dataPath.Replace("/Assets", ""), path);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new { error = pathError };
 
             if (!File.Exists(fullPath))
                 return new { error = $"File not found: {path}" };

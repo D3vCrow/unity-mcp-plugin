@@ -30,6 +30,10 @@ namespace UnityMCP.Editor
             string assetName = args.ContainsKey("name") ? args["name"].ToString()
                 : Path.GetFileNameWithoutExtension(path);
 
+            bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite, out string fullPath, out string pathError))
+                return new { error = pathError };
+
             // Ensure directory exists
             string dir = Path.GetDirectoryName(path)?.Replace('\\', '/');
             if (!string.IsNullOrEmpty(dir) && !AssetDatabase.IsValidFolder(dir))
@@ -67,7 +71,6 @@ namespace UnityMCP.Editor
             };
 
             string json = MiniJson.Serialize(root);
-            string fullPath = Path.Combine(Path.GetDirectoryName(Application.dataPath), path).Replace('\\', '/');
             File.WriteAllText(fullPath, json);
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
 
@@ -503,7 +506,8 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(assetPath))
                 return null;
 
-            string fullPath = Path.Combine(Path.GetDirectoryName(Application.dataPath), assetPath).Replace('\\', '/');
+            if (!MCPPathGuard.TryResolveRead(assetPath, out string fullPath, out _))
+                return null;
             if (!File.Exists(fullPath))
                 return null;
 
@@ -513,8 +517,9 @@ namespace UnityMCP.Editor
 
         private static void SaveInputActionsJson(string assetPath, Dictionary<string, object> root)
         {
+            if (!MCPPathGuard.TryResolveWrite(assetPath, overwrite: true, out string fullPath, out string pathError))
+                throw new InvalidOperationException(pathError);
             string json = MiniJson.Serialize(root);
-            string fullPath = Path.Combine(Path.GetDirectoryName(Application.dataPath), assetPath).Replace('\\', '/');
             File.WriteAllText(fullPath, json);
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
         }

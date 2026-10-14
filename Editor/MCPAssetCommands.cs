@@ -71,12 +71,15 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(dest))
                 return new { error = "sourcePath and destinationPath are required" };
 
-            string fullDest = Path.Combine(Application.dataPath.Replace("/Assets", ""), dest);
+            // sourcePath stays open: importing a file from outside the project is this route's purpose.
+            bool overwrite = args.ContainsKey("overwrite") && Convert.ToBoolean(args["overwrite"]);
+            if (!MCPPathGuard.TryResolveWrite(dest, overwrite, out string fullDest, out string pathError))
+                return new { error = pathError };
             string destDir = Path.GetDirectoryName(fullDest);
             if (!Directory.Exists(destDir))
                 Directory.CreateDirectory(destDir);
 
-            File.Copy(source, fullDest, true);
+            File.Copy(source, fullDest, overwrite);
             AssetDatabase.ImportAsset(dest);
 
             return new { success = true, importedPath = dest };

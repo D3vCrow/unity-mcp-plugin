@@ -243,6 +243,9 @@ namespace UnityMCP.Editor
                 return new Dictionary<string, object> { { "error", "Missing required parameter: path" } };
 
             string path = args["path"].ToString();
+            if (!MCPPathGuard.TryResolveRead(path, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
+
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(path);
 
             if (shader == null)
@@ -277,7 +280,6 @@ namespace UnityMCP.Editor
             var graphMeta = new Dictionary<string, object>();
             try
             {
-                string fullPath = Path.Combine(Application.dataPath, "..", path);
                 if (File.Exists(fullPath))
                 {
                     string content = File.ReadAllText(fullPath);
@@ -389,7 +391,10 @@ namespace UnityMCP.Editor
             if (!path.EndsWith(".shadergraph"))
                 path += ".shadergraph";
 
-            if (File.Exists(Path.Combine(Application.dataPath, "..", path)))
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
+
+            if (File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File already exists at: {path}" } };
 
             string template = args.ContainsKey("template") ? args["template"].ToString().ToLower() : "urp_lit";
@@ -400,7 +405,7 @@ namespace UnityMCP.Editor
                 // This is the most reliable approach as the JSON format is complex and version-dependent
 
                 // First ensure directory exists
-                string dir = Path.GetDirectoryName(Path.Combine(Application.dataPath, "..", path));
+                string dir = Path.GetDirectoryName(fullPath);
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
 
@@ -451,7 +456,6 @@ namespace UnityMCP.Editor
                 if (!created)
                 {
                     string graphContent = GetMinimalShaderGraphJson(template, Path.GetFileNameWithoutExtension(path));
-                    string fullPath = Path.Combine(Application.dataPath, "..", path);
                     File.WriteAllText(fullPath, graphContent);
                     AssetDatabase.ImportAsset(path);
                     created = true;
@@ -705,7 +709,8 @@ namespace UnityMCP.Editor
                 return new Dictionary<string, object> { { "error", "Missing required parameter: path" } };
 
             string path = args["path"].ToString();
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveRead(path, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
 
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
@@ -783,7 +788,8 @@ namespace UnityMCP.Editor
                 return new Dictionary<string, object> { { "error", "Missing required parameter: path" } };
 
             string path = args["path"].ToString();
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveRead(path, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
 
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
@@ -823,7 +829,8 @@ namespace UnityMCP.Editor
             float posX = args.ContainsKey("positionX") ? Convert.ToSingle(args["positionX"]) : 0f;
             float posY = args.ContainsKey("positionY") ? Convert.ToSingle(args["positionY"]) : 0f;
 
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
 
@@ -906,7 +913,8 @@ namespace UnityMCP.Editor
 
             string path = args["path"].ToString();
             string nodeId = args["nodeId"].ToString();
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
 
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
@@ -984,7 +992,8 @@ namespace UnityMCP.Editor
             string inputNodeId = args["inputNodeId"].ToString();
             int inputSlotId = Convert.ToInt32(args["inputSlotId"]);
 
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
 
@@ -1043,7 +1052,8 @@ namespace UnityMCP.Editor
             int outputSlotId = args.ContainsKey("outputSlotId") ? Convert.ToInt32(args["outputSlotId"]) : -1;
             int inputSlotId = args.ContainsKey("inputSlotId") ? Convert.ToInt32(args["inputSlotId"]) : -1;
 
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
 
@@ -1125,7 +1135,8 @@ namespace UnityMCP.Editor
             string propertyName = args["propertyName"].ToString();
             string value = args.ContainsKey("value") ? args["value"].ToString() : "";
 
-            string fullPath = Path.Combine(Application.dataPath, "..", path);
+            if (!MCPPathGuard.TryResolveWrite(path, overwrite: true, out string fullPath, out string pathError))
+                return new Dictionary<string, object> { { "error", pathError } };
             if (!File.Exists(fullPath))
                 return new Dictionary<string, object> { { "error", $"File not found: {path}" } };
 
