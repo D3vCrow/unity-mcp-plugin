@@ -386,16 +386,21 @@ namespace UnityMCP.Editor
                     return;
                 }
 
-                // ═══ Project Context endpoints (read-only, no queue needed) ═══
+                // ═══ Project Context endpoints (read-only, no ticket queue needed) ═══
+                // Still main-thread: GetContextResponse reads EditorPrefs (ContextEnabled,
+                // ContextPath), Application.dataPath and, on first use, PlayerSettings.productGUID,
+                // and each of those throws on this listener thread.
                 if (apiPath == "context")
                 {
-                    SendJson(response, 200, MCPContextManager.GetContextResponse());
+                    SendJson(response, 200,
+                        ExecuteOnMainThread(() => MCPContextManager.GetContextResponse()));
                     return;
                 }
                 if (apiPath.StartsWith("context/"))
                 {
                     string category = apiPath.Substring("context/".Length);
-                    SendJson(response, 200, MCPContextManager.GetContextResponse(category));
+                    SendJson(response, 200,
+                        ExecuteOnMainThread(() => MCPContextManager.GetContextResponse(category)));
                     return;
                 }
 
