@@ -110,7 +110,11 @@ namespace UnityMCP.Editor
 
             var serialized = new SerializedObject(component);
             var prop = serialized.FindProperty(propName);
-            if (prop == null) return new { error = $"Property '{propName}' not found on {typeName}" };
+            if (prop == null)
+            {
+                var hints = MCPPropertyHints.Nearest(serialized, propName);
+                return new { error = MCPPropertyHints.NotFoundMessage($"Property '{propName}' not found on {typeName}", hints), nearest = hints };
+            }
 
             try
             {
@@ -171,7 +175,10 @@ namespace UnityMCP.Editor
             var serialized = new SerializedObject(component);
             var prop = serialized.FindProperty(propertyName);
             if (prop == null)
-                return new { error = $"Property '{propertyName}' not found" };
+            {
+                var hints = MCPPropertyHints.Nearest(serialized, propertyName);
+                return new { error = MCPPropertyHints.NotFoundMessage($"Property '{propertyName}' not found", hints), nearest = hints };
+            }
 
             if (prop.propertyType != SerializedPropertyType.ObjectReference)
                 return new { error = $"Property '{propertyName}' is not an ObjectReference (type: {prop.propertyType}). Use component/set-property instead." };

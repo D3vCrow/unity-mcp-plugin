@@ -132,7 +132,10 @@ namespace UnityMCP.Editor
             var serialized = new SerializedObject(so);
             var prop = serialized.FindProperty(fieldName);
             if (prop == null)
-                return new { error = $"Property '{fieldName}' not found on {so.GetType().Name}" };
+            {
+                var hints = MCPPropertyHints.Nearest(serialized, fieldName);
+                return new { error = MCPPropertyHints.NotFoundMessage($"Property '{fieldName}' not found on {so.GetType().Name}", hints), nearest = hints };
+            }
 
             Undo.RecordObject(so, "Set SO Field");
 

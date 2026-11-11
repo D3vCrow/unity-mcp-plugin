@@ -155,7 +155,10 @@ namespace UnityMCP.Editor
                 var serialized = new SerializedObject(component);
                 var prop = serialized.FindProperty(propertyName);
                 if (prop == null)
-                    return new { error = $"Property '{propertyName}' not found on '{componentType}'" };
+                {
+                    var hints = MCPPropertyHints.Nearest(serialized, propertyName);
+                    return new { error = MCPPropertyHints.NotFoundMessage($"Property '{propertyName}' not found on '{componentType}'", hints), nearest = hints };
+                }
 
                 MCPComponentCommands.SetSerializedValue(prop, args["value"]);
                 serialized.ApplyModifiedProperties();
