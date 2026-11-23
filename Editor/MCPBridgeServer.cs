@@ -328,13 +328,15 @@ namespace UnityMCP.Editor
                 //
                 // Origin check:  always enforced. Missing Origin passes (raw tool traffic
                 //                has no Origin). Browsers omit Origin on a no-cors GET
-                //                (an <img src>), so the GET gate below covers that case.
+                //                or HEAD (an <img src>, a no-cors fetch), so the verb
+                //                gate below covers that case.
                 // Token check:   opt-in via MCPSettingsManager.EnforceToken. Applies to
                 //                non-GET verbs only (reads remain ergonomic for curl).
-                // GET gate:      GET reaches only the read routes in IsGetReadRoute.
+                // Verb gate:     POST reaches every route, GET only the read routes in
+                //                IsGetReadRoute, and every other verb is refused.
                 //                RouteRequest dispatches on the path alone, so without
-                //                this an empty-body GET could enter Play mode, save or
-                //                replace the open scene with no token.
+                //                this an empty-body GET or HEAD could enter Play mode,
+                //                save or replace the open scene with no token.
                 if (!IsOriginAllowed(request.Headers["Origin"]))
                 {
                     SendJson(response, 403, new { error = "origin not allowed" });
@@ -354,10 +356,9 @@ namespace UnityMCP.Editor
                 }
 
                 string apiPath = path.Substring(4); // Remove "api/"
-                if (string.Equals(request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase) &&
-                    !IsGetReadRoute(apiPath))
+                if (!IsVerbAllowed(request.HttpMethod, apiPath))
                 {
-                    SendJson(response, 405, new { error = "GET not allowed on this route, use POST" });
+                    SendJson(response, 405, new { error = $"{request.HttpMethod} not allowed on this route, use POST" });
                     return;
                 }
                 string body = "";
@@ -1554,6 +1555,15 @@ namespace UnityMCP.Editor
             if (string.IsNullOrEmpty(origin)) return true; // raw tool / curl — rely on token when EnforceToken=true
             int port = _activePort;
             return origin == $"http://127.0.0.1:{port}" || origin == $"http://localhost:{port}";
+        }
+
+        // POST reaches every route and GET only the read routes. HEAD and every other
+        // verb are refused: a page can send a no-cors HEAD with no body and no Origin.
+        private static bool IsVerbAllowed(string method, string apiPath)
+        {
+            if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase)) return true;
+            return string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase) &&
+                   IsGetReadRoute(apiPath);
         }
 
         // Routes a GET may reach: the ones the MCP server reads with GET (ping, queue
