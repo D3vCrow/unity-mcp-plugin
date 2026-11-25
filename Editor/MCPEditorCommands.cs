@@ -225,6 +225,11 @@ namespace UnityMCP.Editor
                 };
             }
 
+            // Safe mode (default ON): no unsafe code, and the compiled assembly is checked
+            // against the MCPCodeSafety allowlist before it is loaded. Read on the main
+            // thread here; the route runs there.
+            bool safeMode = MCPSettingsManager.ExecuteCodeSafeMode;
+
             try
             {
                 // Wrap user code in a static method so it can use 'return' to send data back
@@ -311,11 +316,11 @@ public static class MCPDynamicCode
                     ctorArgs[0] = dllOutputKind;
                     for (int i = 1; i < ctorPars.Length; i++)
                         ctorArgs[i] = ctorPars[i].HasDefaultValue ? ctorPars[i].DefaultValue : null;
-                    // Set allowUnsafe if there's such a parameter
+                    // Set allowUnsafe if there's such a parameter (never in safe mode)
                     for (int i = 1; i < ctorPars.Length; i++)
                     {
                         if (ctorPars[i].Name == "allowUnsafe")
-                            ctorArgs[i] = true;
+                            ctorArgs[i] = !safeMode;
                     }
                     compilationOptions = optionsCtor.Invoke(ctorArgs);
                 }
@@ -423,6 +428,27 @@ public static class MCPDynamicCode
                         { "errors", errors },
                         { "code", code },
                     };
+                }
+
+                // Safe mode: check every type and member the compiled code references,
+                // BEFORE the assembly is loaded (loading can run a module initializer).
+                if (safeMode)
+                {
+                    var blocked = MCPCodeSafety.FindBlocked(File.ReadAllBytes(outputPath),
+                        MCPSettingsManager.ExecuteCodeExtraNamespaceList());
+                    if (blocked.Count > 0)
+                    {
+                        try { File.Delete(outputPath); } catch { }
+                        return new Dictionary<string, object>
+                        {
+                            { "error", "Blocked by execute-code safe mode: " + string.Join(", ", blocked) },
+                            { "blocked", blocked },
+                            { "safeMode", true },
+                            { "policy", MCPCodeSafety.PolicySummary() },
+                            { "howToChange", "Only the person at the Unity editor can change this: MCP dashboard > Security > " +
+                                             "'Execute-code safe mode' (off) or 'Extra allowed namespaces'. The bridge cannot change it." },
+                        };
+                    }
                 }
 
                 // Load and execute

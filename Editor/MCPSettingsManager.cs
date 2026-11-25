@@ -240,6 +240,67 @@ namespace UnityMCP.Editor
             _sharedSecretSnapshot = SharedSecret; // triggers lazy generation if absent
         }
 
+        // ─── Execute-code safe mode ───
+        //
+        // ON by default: the execute-code route refuses compiled code that references a
+        // type outside the allowlist in MCPCodeSafety (files, processes, network,
+        // reflection, native code, EditorPrefs...). Machine-global like the token keys.
+        // The extra namespaces are project-scoped, since project namespaces differ.
+        // Neither can be changed through the bridge: the editorprefs routes refuse
+        // these keys (IsProtectedPrefKey) and safe mode itself blocks EditorPrefs.
+
+        public static bool ExecuteCodeSafeMode
+        {
+            get => EditorPrefs.GetBool(SecurityPrefix + "ExecuteCodeSafeMode", true);
+            set => EditorPrefs.SetBool(SecurityPrefix + "ExecuteCodeSafeMode", value);
+        }
+
+        /// <summary>Comma-separated namespaces the owner allows on top of the safe-mode list (each with its sub-namespaces).</summary>
+        public static string ExecuteCodeExtraNamespaces
+        {
+            get => EditorPrefs.GetString(ProjectPrefix + "ExecuteCodeExtraNamespaces", "");
+            set => EditorPrefs.SetString(ProjectPrefix + "ExecuteCodeExtraNamespaces", value ?? "");
+        }
+
+        public static List<string> ExecuteCodeExtraNamespaceList()
+        {
+            var list = new List<string>();
+            foreach (var part in ExecuteCodeExtraNamespaces.Split(','))
+            {
+                string t = part.Trim();
+                if (t.Length > 0) list.Add(t);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// True for EditorPrefs keys the bridge's editorprefs routes must not write or
+        /// delete: the token switch, the shared secret and the safe-mode settings.
+        /// Compared case-insensitively, because EditorPrefs keys on Windows live in the
+        /// registry, where names are case-insensitive.
+        /// </summary>
+        public static bool IsProtectedPrefKey(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+            string[] protectedKeys =
+            {
+                SecurityPrefix + "EnforceToken",
+                SecurityPrefix + "SharedSecret",
+                SecurityPrefix + "ExecuteCodeSafeMode",
+                ProjectPrefix + "ExecuteCodeExtraNamespaces",
+            };
+            foreach (var k in protectedKeys)
+                if (string.Equals(key.Trim(), k, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>True for keys whose VALUE the editorprefs/get route must not return.</summary>
+        public static bool IsSecretPrefKey(string key)
+        {
+            return !string.IsNullOrEmpty(key) &&
+                   string.Equals(key.Trim(), SecurityPrefix + "SharedSecret", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string SecretSidecarPath
         {
             get

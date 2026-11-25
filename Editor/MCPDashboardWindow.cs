@@ -733,6 +733,29 @@ namespace UnityMCP.Editor
                 EditorGUILayout.EndHorizontal();
             }
 
+            // Security — execute-code safe mode (namespace allowlist, see MCPCodeSafety)
+            bool safeMode = EditorGUILayout.Toggle(new GUIContent("Execute-code safe mode",
+                "When enabled, code sent to the execute-code route may only use an allowlist of namespaces " +
+                "(no files, processes, network, reflection, native code or EditorPrefs). Agents cannot change this setting."),
+                MCPSettingsManager.ExecuteCodeSafeMode);
+            if (safeMode != MCPSettingsManager.ExecuteCodeSafeMode)
+                MCPSettingsManager.ExecuteCodeSafeMode = safeMode;
+
+            if (safeMode)
+            {
+                string extra = EditorGUILayout.DelayedTextField(new GUIContent("Extra allowed namespaces",
+                    "Comma-separated, for example: MyGame, Unity.Cinemachine. Each one includes its sub-namespaces."),
+                    MCPSettingsManager.ExecuteCodeExtraNamespaces);
+                if (extra != MCPSettingsManager.ExecuteCodeExtraNamespaces)
+                    MCPSettingsManager.ExecuteCodeExtraNamespaces = extra;
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "Safe mode is off: execute-code can run any C#, including starting programs and reading any file.",
+                    MessageType.Warning);
+            }
+
             EditorGUILayout.Space(6);
 
             // ─── Port ───

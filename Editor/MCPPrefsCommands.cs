@@ -12,11 +12,18 @@ namespace UnityMCP.Editor
     {
         // ─── Get EditorPref ───
 
+        private const string ProtectedKeyError =
+            "This key is a bridge security setting (token switch, shared secret or execute-code safe mode). " +
+            "Change it in the MCP dashboard inside Unity; the bridge refuses to write or delete it.";
+
         public static object GetEditorPref(Dictionary<string, object> args)
         {
             string key = args.ContainsKey("key") ? args["key"].ToString() : "";
             if (string.IsNullOrEmpty(key))
                 return new { error = "key is required" };
+
+            if (MCPSettingsManager.IsSecretPrefKey(key))
+                return new { error = "This key holds the bridge's shared secret; the bridge does not return it." };
 
             string type = args.ContainsKey("type") ? args["type"].ToString().ToLower() : "string";
 
@@ -50,6 +57,9 @@ namespace UnityMCP.Editor
             string key = args.ContainsKey("key") ? args["key"].ToString() : "";
             if (string.IsNullOrEmpty(key))
                 return new { error = "key is required" };
+
+            if (MCPSettingsManager.IsProtectedPrefKey(key))
+                return new { error = ProtectedKeyError };
 
             if (!args.ContainsKey("value"))
                 return new { error = "value is required" };
@@ -88,6 +98,9 @@ namespace UnityMCP.Editor
             string key = args.ContainsKey("key") ? args["key"].ToString() : "";
             if (string.IsNullOrEmpty(key))
                 return new { error = "key is required" };
+
+            if (MCPSettingsManager.IsProtectedPrefKey(key))
+                return new { error = ProtectedKeyError };
 
             bool existed = EditorPrefs.HasKey(key);
             EditorPrefs.DeleteKey(key);
