@@ -403,19 +403,32 @@ namespace UnityMCP.Editor
 
         // ─── ParrelSync Detection ───
 
+        private static bool? _isParrelSyncCloneCache;
+
         /// <summary>
-        /// Detect if this project is a ParrelSync clone based on folder naming convention.
-        /// ParrelSync clones have folders named "ProjectName_clone_X".
+        /// Detect if this project is a ParrelSync clone. ParrelSync writes an empty ".clone" file in every
+        /// clone's root and treats that file as the truth (ClonesManager.IsClone); its clone folders are also
+        /// named "ProjectName_clone_X". Either sign counts, so a renamed clone is still caught.
+        /// Cached: the project path cannot change while the editor runs, and the toolbar and dashboard call this on every repaint.
         /// </summary>
         public static bool IsParrelSyncClone()
         {
+            if (_isParrelSyncCloneCache.HasValue) return _isParrelSyncCloneCache.Value;
+
             string projectPath = GetProjectPath();
             string folderName = Path.GetFileName(projectPath);
-            return folderName != null && System.Text.RegularExpressions.Regex.IsMatch(folderName, @"_clone_\d+$");
+            bool byName = folderName != null && System.Text.RegularExpressions.Regex.IsMatch(folderName, @"_clone_\d+$");
+            bool byMarker = false;
+            try { byMarker = File.Exists(Path.Combine(projectPath, ".clone")); }
+            catch (Exception) { /* unreadable root: fall back to the name check */ }
+
+            _isParrelSyncCloneCache = byName || byMarker;
+            return _isParrelSyncCloneCache.Value;
         }
 
         /// <summary>
         /// Get the clone index if this is a ParrelSync clone, or -1 if it's the original.
+        /// The index comes from the folder name only, so a clone found by its ".clone" file in a renamed folder also returns -1.
         /// </summary>
         public static int GetParrelSyncCloneIndex()
         {
